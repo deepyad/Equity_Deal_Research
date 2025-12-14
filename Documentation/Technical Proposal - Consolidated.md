@@ -13,9 +13,11 @@ This proposal describes a scalable system architecture for surfacing similar his
 
 ---
 
-## 1. System Architecture
+## Part 1: System Architecture (30%)
 
-### 1.1 High-Level Architecture
+### High-Level Architecture
+
+The system is built as a set of services around a "deal similarity" core:
 
 ```
 [CRM + Document Repos] → [Ingestion Layer] → [Embedding Service] → [Vector + Metadata Store]
@@ -23,7 +25,7 @@ This proposal describes a scalable system architecture for surfacing similar his
 [New CIM Input] → [Retrieval API] → [Analyst UI + Feedback] → [Tuning Loop]
 ```
 
-The system is built as a set of services around a "deal similarity" core:
+**Key Components:**
 
 - **Ingestion Layer**: Connectors normalize CRM data, OCR-parse CIM PDFs using LayoutLM for layout-aware extraction. Handles currency conversion, date normalization, and sector taxonomy standardization.
 - **Embedding Service**: Generates composite deal representations from structured + unstructured data. Produces standardized multi-modal representation objects that can be versioned.
@@ -34,7 +36,7 @@ The system is built as a set of services around a "deal similarity" core:
 
 This separation enables iteration on models and similarity logic without touching CRM integrations or the UI.
 
-### 1.2 Detailed Process Flow
+### Detailed Process Flow
 
 The following diagram illustrates the complete end-to-end process flow, including all stages, decision points, and sub-modules:
 
@@ -146,79 +148,9 @@ flowchart TD
     class M2,N1,O1,P1,Q1,Q2,Q3,Q4 feedbackLoop
 ```
 
-**Key Stages and Decision Points Explained:**
+---
 
-#### **Stage 1: Data Ingestion**
-- **CRM Connector**: Normalizes fields, converts currencies, standardizes dates and sector taxonomies
-- **Document Parser**: Uses LayoutLM for layout-aware PDF parsing, extracts sections and tables
-- **Data Validator**: Ensures schema compliance and data completeness
-- **Decision Point 1**: Data quality gate - failed data goes to manual review queue
-
-#### **Stage 2: Embedding Generation**
-- **Structured Encoder**: Normalizes financials (log-transform, z-scores), creates categorical embeddings, adds temporal features
-- **Text Encoder**: Uses domain-tuned models (FinBERT/sentence-transformers), creates section-level embeddings, weights IC memos higher
-- **Tag Extractor**: Identifies qualitative patterns and risk indicators
-- **Multi-Modal Fusion**: Combines structured and text embeddings using joint or late fusion strategies
-
-#### **Stage 3: Storage**
-- **Vector Store**: Stores high-dimensional embeddings with ANN indexing for fast similarity search
-- **Metadata Store**: Stores structured features, IDs, labels, and filtering attributes
-
-#### **Stage 4: Query Processing**
-- **Query Preprocessor**: Extracts context and identifies query type
-- **Decision Point 2**: Routes to appropriate encoder based on query type (structured, text, or multi-modal)
-
-#### **Stage 5: Similarity Search & Scoring**
-- **Vector Search**: Performs approximate nearest-neighbor search using cosine distance
-- **Metadata Filter**: Applies sector, date, and outcome filters
-- **Similarity Scorer**: Computes structured, text, and metadata similarity scores
-- **Context Weighting**: Applies context-dependent weights (screening, risk, exit, strategic)
-
-#### **Stage 6: Result Ranking**
-- **Decision Point 3**: Match quality threshold check - low-confidence results trigger fallback
-- **Ranking & Re-ranking**: Applies diversity penalty, recency boost, feedback-based boosts, personalization
-- **Fallback Handler**: Expands search to adjacent sectors or uses keyword search for low-confidence cases
-- **Result Formatter**: Creates explainable results with attribution breakdown
-
-#### **Stage 7: Analyst Interface & Feedback**
-- **Analyst UI**: Displays results with comparison views, explainability panels, and adjustable weight sliders
-- **Feedback Collector**: Captures analyst interactions (useful/not useful, pins, overrides, weight adjustments)
-- **Decision Point 4**: Triggers feedback logging when analyst provides input
-
-#### **Stage 8: Continuous Learning Loop**
-- **Feedback Logger**: Stores labeled query-deal pairs with context
-- **Training Trigger**: Determines when to retrain based on batch size or time intervals
-- **Model Training**: Uses contrastive learning to update projection layers and weights
-- **Model Evaluator**: Measures precision@K, recall@K, and A/B test performance
-- **Decision Point 5**: Determines if model improvement is significant enough for deployment
-- **Model Deployment**: Versions and deploys improved models back to embedding service
-
-**Critical Feedback Loops:**
-1. **Short-term**: Analyst feedback immediately influences ranking and personalization
-2. **Medium-term**: Batch feedback triggers model weight updates
-3. **Long-term**: Periodic retraining improves embedding quality and fusion strategies
-
-**Decision Points Summary:**
-
-| Decision Point | Condition | Action if TRUE | Action if FALSE |
-|----------------|-----------|----------------|-----------------|
-| **D1: Data Quality** | Validation passes schema checks, completeness thresholds, quality score > threshold | Proceed to embedding generation | Route to manual review queue, log errors, notify admin |
-| **D2: Query Type** | Query contains structured filters only | Use structured encoder only | Check for text content → route to text or multi-modal encoder |
-| **D3: Match Quality** | Top similarity score > 0.6 threshold | Proceed to ranking and re-ranking | Trigger fallback handler (adjacent sectors, keyword search, escalation) |
-| **D4: Feedback Received** | Analyst provides useful/not useful, pins, or adjusts weights | Log feedback with context for training | Continue normal operation, await feedback |
-| **D5: Model Performance** | New model improves precision@K, recall@K, or A/B test metrics | Deploy new model version, update embedding service | Continue hyperparameter tuning or wait for more feedback data |
-
-**Sub-Modules Breakdown:**
-
-| Main Component | Sub-Modules | Key Functionality |
-|----------------|-------------|-------------------|
-| **Ingestion Layer** | CRM Connector<br/>Document Parser<br/>Data Validator | Field mapping, currency conversion, date normalization<br/>PDF OCR/LayoutLM, section extraction, table parsing<br/>Schema validation, completeness check, quality scoring |
-| **Embedding Service** | Structured Encoder<br/>Text Encoder<br/>Tag Extractor<br/>Multi-Modal Fusion | Financial normalization, log/z-score transforms, categorical embeddings, temporal features<br/>Sentence-transformers/FinBERT, section-level embeddings, IC memo weighting<br/>Pattern recognition, qualitative tags, risk indicators<br/>Joint/late fusion, weight combination, context-specific heads |
-| **Similarity Search** | Vector Search<br/>Metadata Filter<br/>Similarity Scorer<br/>Context Weighting | ANN query, cosine distance, top-K retrieval<br/>Sector match, date range, outcome filter<br/>Structured/text/metadata similarity computation<br/>Context-dependent weight application (screening, risk, exit, strategic) |
-| **Ranking & Results** | Ranking Engine<br/>Fallback Handler<br/>Result Formatter | Diversity penalty, recency boost, feedback boost, personalization<br/>Adjacent sector search, keyword search, low confidence alerts<br/>Attribution breakdown, highlighted snippets, comparison attributes |
-| **Feedback Loop** | Feedback Logger<br/>Model Training<br/>Model Evaluator<br/>Model Deployment | Label storage, context capture, interaction tracking<br/>Contrastive loss, projection layer updates, weight re-tuning<br/>Precision@K, recall@K, A/B testing<br/>Version control, A/B rollout, monitoring |
-
-### 1.3 Deal Representation Strategy
+### How would you represent deals in a way that enables similarity comparison?
 
 Each deal is represented as a **structured schema plus one or more vectors**:
 
@@ -262,9 +194,9 @@ The system computes similarity using these components either separately (e.g., "
 
 ---
 
-## 2. Embedding and Representation Strategies
+### What embedding or representation strategies might you employ?
 
-### 2.1 Structured Metrics
+#### Structured Metrics
 
 For structured data, the goal is to make distances meaningful:
 
@@ -284,7 +216,7 @@ For structured data, the goal is to make distances meaningful:
 **Initial Representation:**
 A simple starting representation is a concatenated vector of normalized numeric features and dense categorical embeddings. Later, this can feed a small neural encoder or autoencoder to learn a compressed embedding that places "economically similar" deals closer together.
 
-### 2.2 Text and Document Embeddings
+#### Text and Document Embeddings
 
 For unstructured content, the goals are to capture:
 - Business model specifics (pricing, customer type, go-to-market)
@@ -307,7 +239,11 @@ For unstructured content, the goals are to capture:
 - Investment memos and analyst notes get higher weight due to decision rationale capture
 - Often closer to how the firm actually reasons ("strong product, but high churn; concerns on management depth")
 
-### 2.3 Multi-Modal Fusion Strategies
+---
+
+### How would you handle the multi-modal nature of the data (structured metrics + unstructured documents)?
+
+#### Multi-Modal Fusion Strategies
 
 There are several pragmatic ways to fuse structured and text representations:
 
@@ -323,7 +259,7 @@ FFN(concat(x_struct, x_text))  // Contrastive training
 s_final = w_struct · s_struct + w_text · s_text  // w=[0.4, 0.6] initial
 ```
 - Compute structured similarity score $s_{struct}$ and text similarity score $s_{text}$, then combine them
-- $\alpha$ is tunable by context or analyst preference
+- Weights are tunable by context or analyst preference
 - Easy to reason about and can be changed per use case (e.g., screening may rely more on structure, deep dives more on text)
 
 **Context-Specific Heads:**
@@ -332,7 +268,7 @@ s_final = w_struct · s_struct + w_text · s_text  // w=[0.4, 0.6] initial
 
 This approach keeps the system modular: embeddings are reusable assets, while similarity logic can evolve separately as analysts give feedback.
 
-### 2.4 Handling Multi-Modality in Practice
+#### Handling Multi-Modality in Practice
 
 Multi-modality requires letting each modality shine when it's most informative:
 
@@ -354,9 +290,9 @@ Multi-modality requires letting each modality shine when it's most informative:
 
 ---
 
-## 3. Similarity Scoring and Matching
+## Part 2: The Similarity Problem (40%)
 
-### 3.1 Defining and Measuring Similarity
+### How would you define and measure 'similarity' between deals?
 
 **Similarity is multi-dimensional and context-dependent**: Two deals are similar if they share economic, strategic, and risk profiles relevant to the evaluation context.
 
@@ -375,7 +311,11 @@ This captures:
 - **Business model/market alignment** (s_text): Similar pricing, customer type, competitive dynamics
 - **Practical constraints** (s_meta): Sector alignment, geographic relevance, temporal recency
 
-### 3.2 Context-Dependent Similarity
+The system uses normalized Euclidean distance for structured features to handle scale differences, cosine similarity for text embeddings to capture semantic relationships, and a combination of categorical matching and exponential decay for metadata (e.g., deals from the same year are more relevant than those from a decade ago).
+
+---
+
+### How would you handle the fact that similarity is context-dependent (similar for what purpose)?
 
 **Multiple similarity modes** via adjustable weights or separate scorers:
 
@@ -388,7 +328,17 @@ This captures:
 
 **Implementation**: Analyst selects preset or sliders in UI → dynamically recompute rankings. Log preferences for personalization.
 
-### 3.3 Limitations of Pure Embedding-Based Similarity
+The context-dependent approach recognizes that:
+- **Screening** prioritizes financial comparability to quickly filter deals by size and growth
+- **Risk Assessment** emphasizes textual patterns (memos, notes) that reveal risk factors
+- **Exit Potential** balances financial metrics with historical exit outcomes
+- **Strategic Fit** focuses heavily on business model alignment captured in text
+
+This allows the same underlying data to serve multiple analytical purposes, with the system adapting its similarity computation based on the analyst's current need.
+
+---
+
+### What are the limitations of pure embedding-based similarity for this use case?
 
 **Key Failure Modes:**
 
@@ -403,9 +353,15 @@ This captures:
 Good match but different scales: $10M vs $100M revenue → low s_struct despite similar model
 ```
 
-This is why normalization and separate structured scoring are critical.
+This is why normalization and separate structured scoring are critical. The system addresses these limitations by:
 
-### 3.4 Edge Cases and Fallbacks
+1. **Temporal decay**: Recent deals weighted more heavily, with explicit flags for market regime changes
+2. **Sector hierarchies**: Mapping new subsectors to parent sectors when direct matches are sparse
+3. **Outcome transparency**: Showing all outcomes (invested, passed, lost) with explanations rather than filtering
+4. **Explainability**: Breaking down similarity scores by modality so analysts understand why matches were made
+5. **Normalization**: Using log transforms and z-scores for financial metrics so scale differences don't dominate
+
+**Edge Cases and Fallbacks:**
 
 **No Good Matches (>0.6 threshold):**
 - → "Limited historical comps - consider adjacent sectors?"
@@ -415,13 +371,11 @@ This is why normalization and separate structured scoring are critical.
 - → Flag: "Financially similar but different business models"
 - → Surface both for analyst judgment
 
-**Evaluation**: A/B test vs manual search; target precision@5 >70% where analysts mark results "saved time."
+The system explicitly handles these edge cases rather than silently failing, ensuring analysts always get actionable results even when perfect matches don't exist.
 
 ---
 
-## 4. Feedback and Continuous Learning
-
-### 4.1 Incorporating Human Judgment
+### How might you incorporate human judgment and feedback into the system over time?
 
 **Online Learning Loop** turns analyst interactions into training signals:
 
@@ -453,7 +407,7 @@ SecureNet (s_final=0.82)
 └─ Meta: +0.15 (same sector, recent)
 ```
 
-### 4.2 Handling Analyst Divergence
+**Handling Analyst Divergence:**
 
 **When system ≠ analyst notion of similarity:**
 
@@ -473,7 +427,7 @@ Low confidence (<3 good matches):
 
 **Long-term Alignment**: Quarterly "similarity workshop" where analysts vote on test cases to recalibrate system.
 
-### 4.3 Embedding Evolution
+**Embedding Evolution:**
 
 The embedding/representation stack is not static; it starts with sensible defaults and gradually shifts to match the firm's actual notion of similarity as expressed in usage.
 
@@ -484,13 +438,15 @@ These labels can be used to:
 - Re-train projection layers that map raw embeddings into the similarity space
 - Discover new latent factors (e.g., "recurring revenue + low churn + B2B mid-market" often co-occur in deals analysts consider comparable)
 
+This creates a virtuous cycle where the system becomes more aligned with firm-specific reasoning over time, rather than relying solely on generic financial embeddings.
+
 ---
 
-## 5. Evaluation and System Effectiveness
+## Part 3: Practical Considerations (30%)
 
-### 5.1 Quantitative Metrics
+### How would you evaluate whether the system is working well?
 
-Track retrieval quality and business impact:
+**Quantitative Metrics** track retrieval quality and business impact:
 
 - **Precision@5/10**: % of top-k deals analysts mark "useful" (>70% target)
 - **Recall@20**: % of deals analysts manually find that system surfaces
@@ -506,7 +462,11 @@ Hit rate: did system rank Y in top-5?
 
 **A/B Testing**: New vs old workflow; measure deal screening speed + decision confidence.
 
-### 5.2 MVP vs Production System
+The evaluation framework balances technical metrics (precision, recall) with business metrics (time saved, decision quality). The offline evaluation allows testing on historical data before deployment, while A/B testing measures real-world impact.
+
+---
+
+### What would an MVP look like versus a production system?
 
 | Phase | Timeline | Features | Tech Stack | Success Criteria |
 | :-- | :-- | :-- | :-- | :-- |
@@ -514,7 +474,23 @@ Hit rate: did system rank Y in top-5?
 | **Beta (8 weeks)** | Sprint 3-6 | Multi-modal fusion<br>Feedback logging<br>Context presets (screening/risk)<br>Basic explainability | Custom projection layer<br>PostgreSQL metadata<br>Celery for batch jobs | 70% precision@5<br>Daily active users |
 | **Production (12 weeks)** | Sprint 7-12 | Fine-tuned embeddings<br>Personalized weights<br>Audit logging + RBAC<br>API for deal pipeline | Kubernetes<br>Ray for distributed training<br>Enterprise vector DB | 80% precision@5<br>20% time savings validated |
 
-### 5.3 Key Risks and Failure Modes
+**MVP Philosophy:**
+- Start with off-the-shelf components (sentence-transformers, FAISS)
+- Focus on core workflow: ingest deals, generate embeddings, find similar
+- Basic UI sufficient to get feedback
+- Defer advanced features (personalization, fine-tuning) until usage patterns emerge
+
+**Production Readiness:**
+- Enterprise-grade infrastructure (Kubernetes, monitoring, RBAC)
+- Fine-tuned models capturing firm-specific patterns
+- Integration with existing workflows (CRM, deal pipeline)
+- Proven business value (time savings, improved decisions)
+
+This phased approach minimizes risk while delivering value early, allowing the system to evolve based on real usage rather than assumptions.
+
+---
+
+### What are the key risks and failure modes?
 
 | Risk | Impact | Mitigation |
 | :-- | :-- | :-- |
@@ -527,11 +503,58 @@ Hit rate: did system rank Y in top-5?
 
 **Critical Failure**: System always returns same 5 deals → **Diversity penalty** in ranking.
 
+**Risk Management Strategy:**
+
+1. **Early engagement**: Weekly syncs with power users during MVP to catch issues before broader rollout
+2. **Data validation**: Multi-stage validation (schema, completeness, quality scores) with manual review for edge cases
+3. **Temporal awareness**: Explicit handling of market regime changes rather than treating all historical deals equally
+4. **Human-in-the-loop**: System always supports, never replaces, analyst judgment
+5. **Workflow integration**: Embed directly in analyst workflow rather than requiring separate tool
+6. **Security-first**: On-prem deployment option for sensitive CIMs, enterprise-grade access controls
+
+The diversity penalty addresses a critical failure mode where the system becomes "stuck" returning the same popular deals, ensuring results remain varied and relevant.
+
 ---
 
-## 6. Deployment and Scaling
+### How would you handle cases where the system's notion of similarity diverges from what analysts actually find useful?
 
-### 6.1 Infrastructure Requirements
+**When system ≠ analyst notion of similarity:**
+
+```
+1. Surface + log divergence: "You rejected top match - help improve?"
+2. Per-analyst weights: Learn personal w_struct/w_text from interactions
+3. "Override mode": Analyst pins deals → boosts those embeddings for their queries
+4. Senior review: Flag low-confidence results (<0.6 score) for partner input
+```
+
+**Escalation Workflow:**
+```
+Low confidence (<3 good matches):
+→ "Limited comps found. Similar deals in adjacent sectors: [list]"
+→ "Ask senior partner" button → routes to Slack/Teams
+```
+
+**Long-term Alignment**: Quarterly "similarity workshop" where analysts vote on test cases to recalibrate system.
+
+**Specific Mechanisms:**
+
+1. **Immediate Feedback**: When an analyst rejects a top match, the system explicitly asks why and logs the divergence. This creates a training signal while respecting analyst expertise.
+
+2. **Personalization**: Over time, the system learns individual analyst preferences (e.g., one analyst prioritizes financial metrics, another emphasizes business model fit). This is stored as per-analyst weights.
+
+3. **Override Mode**: Analysts can "pin" deals they know are good comparables, which boosts those specific embeddings for their future queries. This allows expert knowledge to immediately influence results.
+
+4. **Escalation**: Low-confidence results automatically flag for senior partner review, ensuring difficult cases get expert attention rather than being silently ignored.
+
+5. **Calibration Workshops**: Quarterly sessions where analysts vote on test cases helps the system stay aligned with evolving firm thinking, especially as market conditions change.
+
+This approach treats divergence as a learning opportunity rather than a failure, ensuring the system continuously improves its alignment with actual analyst judgment.
+
+---
+
+## Infrastructure and Deployment
+
+### Infrastructure Requirements
 
 ```
 Infrastructure:
@@ -541,13 +564,13 @@ Infrastructure:
 └── Cost: ~$2K/month (vector DB + GPU inference)
 ```
 
-### 6.2 Phased Rollout
+### Phased Rollout
 
 1. **Power users** (deal team leads): Week 1-4
 2. **Full analysts**: Week 5+ with training
 3. **Banker portal** (read-only): Month 3
 
-### 6.3 Tech Stack Summary
+### Tech Stack Summary
 
 **MVP:**
 - Vector DB: Pinecone (free tier) or FAISS (local)
@@ -567,13 +590,11 @@ Infrastructure:
 
 ---
 
-## 7. User Interface Screenshots
+## User Interface Screenshots
 
 The following section includes screenshots of the Deal Similarity System user interface. These demonstrate the actual implementation and user experience.
 
-### 7.1 Main Search Interface
-
-**Screenshots: Main Search Page**
+### Main Search Interface
 
 ![Main Search Interface](screenshots/main_search_interface.png)
 
@@ -587,20 +608,7 @@ The following section includes screenshots of the Deal Similarity System user in
 - Main search area with input forms for deal details and financial metrics
 - Document text input areas for CIM and investment memo content
 
-### 7.2 Search Results Display
-
-**Screenshot: Search Results**
-
-**Description:**
-- Expanded deal cards showing company name, sector, deal year
-- Similarity scores and breakdown (structured, text, metadata)
-- Financial metrics comparison (revenue, EBITDA, growth rate, margin)
-- Feedback buttons (👍 Useful, 👎 Not Useful, ⭐ Save)
-- Attribution breakdown showing why each deal was matched
-
-### 7.3 Add Deal Interface
-
-**Screenshot: Add Deal Tab**
+### Add Deal Interface
 
 ![Add Deal Form](screenshots/add_deal_form.png)
 
@@ -610,9 +618,7 @@ The following section includes screenshots of the Deal Similarity System user in
 - PDF upload option for CIM documents
 - Submit button and success/error notifications
 
-### 7.4 Browse Deals Interface
-
-**Screenshot: Browse Deals Tab**
+### Browse Deals Interface
 
 ![Browse Deals Interface](screenshots/browse_deals.png)
 
@@ -621,19 +627,6 @@ The following section includes screenshots of the Deal Similarity System user in
 - Deal listing with expandable cards
 - Deal details display (metadata and financial metrics)
 - Search and filter functionality
-
-### 7.5 Feedback and Explainability
-
-**Screenshot: Similarity Breakdown**
-
-**Description:**
-- Detailed similarity breakdown showing:
-  - Structured similarity score (financial metrics match)
-  - Text similarity score (document content match)
-  - Metadata similarity (sector, geography, year alignment)
-  - Overall similarity score
-- Highlighted snippets from documents that drove text similarity
-- Comparison attributes showing key matching factors
 
 ---
 
@@ -649,4 +642,3 @@ This system enables private equity analysts to efficiently find and leverage his
 - Handle edge cases gracefully
 
 The architecture is designed to be modular and evolvable, allowing the firm to start with a basic implementation and progressively enhance sophistication based on real-world usage and feedback.
-
