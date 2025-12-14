@@ -1,6 +1,6 @@
 # Deal Similarity System - MVP Implementation
 
-A multi-modal similarity search system for finding similar historical deals to new CIM (Confidential Information Memorandum) opportunities in private equity and investment firms.
+A multi-modal similarity search system for finding similar historical deals to new CIM (Confidential Information Memorandum) opportunities in private equity and investment firms.RAG-based AI system for private equity deal similarity search. Analyzes Equity CIM documents using multi-modal embeddings (structured financial data + text) to find comparable historical deals in seconds.
 
 ## Project Structure
 
