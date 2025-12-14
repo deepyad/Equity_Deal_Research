@@ -1,0 +1,62 @@
+# Python
+# Exclude Python bytecode cache files and directories
+__pycache__/
+*.py[cod]  # Matches .pyc, .pyo, .pyd files
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Data files
+data/vectors/*.faiss
+data/vectors/*.ids
+data/metadata.db
+data/crm/*.csv
+data/crm/*.json
+data/documents/*.pdf
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.env.local
+
+# Model files (if cached)
+models/
+*.pth
+*.pt
+*.h5
+
+

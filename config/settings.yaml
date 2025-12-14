@@ -1,0 +1,63 @@
+# System Configuration
+
+# Embedding Settings
+embedding:
+  model_name: "all-MiniLM-L6-v2"  # sentence-transformers model
+  dimension: 384
+  batch_size: 32
+
+# Vector Store Settings
+vector_store:
+  type: "faiss"  # Options: faiss, pinecone
+  index_path: "data/vectors/deal_index.faiss"
+  dimension: 384
+
+# Similarity Settings
+similarity:
+  default_weights:
+    structured: 0.4
+    text: 0.6
+    metadata: 0.1
+  contexts:
+    screening:
+      structured: 0.7
+      text: 0.3
+      metadata: 0.2
+    risk_assessment:
+      structured: 0.2
+      text: 0.7
+      metadata: 0.15
+    exit_potential:
+      structured: 0.5
+      text: 0.5
+      metadata: 0.2
+    strategic_fit:
+      structured: 0.1
+      text: 0.8
+      metadata: 0.15
+
+# Retrieval Settings
+retrieval:
+  top_k: 10
+  similarity_threshold: 0.6
+  max_results: 20
+
+# Data Paths
+paths:
+  crm_data: "data/crm"
+  documents: "data/documents"
+  vectors: "data/vectors"
+  metadata: "data/metadata.db"
+
+# API Settings
+api:
+  host: "0.0.0.0"
+  port: 8000
+  reload: true
+
+# UI Settings
+ui:
+  port: 8501
+  title: "Deal Similarity System"
+
+
